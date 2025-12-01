@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from transformers import AutoTokenizer
 
-from config.arsenal_model_config import ArsenalConfig
+from arsenal_model_config import ArsenalConfig
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
@@ -249,14 +249,19 @@ def generate(model: ArsenalModel, idx, temperature=0.0, top_k=None):
 
 
 def text_to_token_ids(text):
+    """
+    将文本编码为向量
+    """
     encoded = tokenizer.encode(text)
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # add batch dimension
     return encoded_tensor
 
 
-# 给输入的字符进行编码并实现一个Batch维度的向量,符合模型的输入形式
 def token_ids_to_text(token_ids):
-    flat = token_ids.squeeze(0)  # remove batch dimension
+    """
+    将索引转换为文本
+    """
+    flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
 
 

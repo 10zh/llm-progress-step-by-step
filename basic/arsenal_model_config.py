@@ -1,5 +1,5 @@
 class ArsenalConfig:
-    def __init__(self, vocab_size=151936, hidden_size=4096, num_attention_heads=16, num_layers=32, attention_bias=True,
+    def __init__(self, vocab_size=151936, hidden_size=4096, num_attention_heads=32, num_layers=32, attention_bias=True,
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
                  intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
                  context_length=4096):
