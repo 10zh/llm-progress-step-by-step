@@ -34,3 +34,6 @@ class ArsenalConfig:
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
         self.context_length = context_length
+
+
+__all__ = ["ArsenalConfig"]

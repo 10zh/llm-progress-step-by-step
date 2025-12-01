@@ -6,7 +6,7 @@ from transformers import AutoTokenizer
 
 from config.arsenal_model_config import ArsenalConfig
 
-tokenizer = AutoTokenizer.from_pretrained('../tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
+tokenizer = AutoTokenizer.from_pretrained('tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
 
 class ArsenalAttention(nn.Module):
