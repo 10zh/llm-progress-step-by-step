@@ -270,7 +270,6 @@ if __name__ == '__main__':
     modelConfig = ArsenalConfig(num_attention_heads=2, num_layers=1, head_dim=2048, max_position_embedding=4096,
                                 intermediate_size=4096, context_length=12)
     llm_model = ArsenalModel(modelConfig)
-    llm_model.to("cpu")
     output_ids = generate(
         model=llm_model,
         idx=text_to_token_ids("hello"),
