@@ -1,4 +1,3 @@
-import math
 from typing import Optional
 
 import torch
@@ -72,10 +71,10 @@ class ArsenalAttention(nn.Module):
 
         # 应用注意力掩码
         mask_bool = self.mask.bool()[:seq_len, :seq_len]
-        attn_weights.masked_fill_(mask_bool, -math.inf)
+        attn_weights.masked_fill_(mask_bool, -torch.inf)
 
         # 计算缩放点积注意力
-        attn_weights = attn_weights / math.sqrt(self.head_dim)
+        attn_weights = attn_weights / self.head_dim ** 0.5
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
 
         # 正则化
@@ -87,7 +86,7 @@ class ArsenalAttention(nn.Module):
         # (bsz,num_attention_heads,seq_len,head_dim) -> (bsz,seq_len,num_attention_heads,head_dim)
         attn_outputs = attn_outputs.transpose(1, 2).contiguous()
         # (bsz,seq_len,num_attention_heads,head_dim) -> (bsz,seq_len,hidden_size)
-        attn_outputs = attn_outputs.reshape(bsz, seq_len, self.hidden_size)
+        attn_outputs = attn_outputs.reshape(bsz, seq_len, self.config.hidden_size)
         # (bsz,seq_len,hidden_size)->(bsz,seq_len,hidden_size)
         attn_outputs = self.o_proj(attn_outputs)
         return attn_outputs, attn_weights
@@ -114,7 +113,7 @@ class ArsenalLayerNorm(nn.Module):
         # 计算方差
         variance = hidden_states.var(dim=-1, keepdim=True, unbiased=False)
         # 套入层归一化公式
-        hidden_states_normalized = (hidden_states - mean) / math.sqrt(variance + self.eps)
+        hidden_states_normalized = (hidden_states - mean) / torch.sqrt(variance + self.eps)
         # 返回结果
         return hidden_states_normalized * self.scale + self.shift
 
@@ -179,9 +178,9 @@ class ArsenalModel(nn.Module):
 
     def __init__(self, config: ArsenalConfig):
         super(ArsenalModel, self).__init__()
+        self.context_length = config.context_length
         self.pad_token_id = config.pad_token_id
         self.eos_token_id = config.eos_token_id
-        self.context_length = config.context_length
         self.num_layers = config.num_layers
         self.vocab_size = config.vocab_size
         self.embed_tokens = nn.Embedding(self.vocab_size, config.hidden_size, padding_idx=self.pad_token_id)
@@ -197,10 +196,11 @@ class ArsenalModel(nn.Module):
     def forward(self, input_ids: Optional[torch.Tensor] = None):
         if input_ids is None:
             raise ValueError("input_ids不能为空")
+        batch_size, seq_len = input_ids.shape
         # 词嵌入
         input_embeds = self.embed_tokens(input_ids)
         # 采用绝对位置方式计算位置编码
-        position_embeds = self.position_embeddings(input_ids)
+        position_embeds = self.position_embeddings(torch.arange(seq_len, device=input_ids.device))
         # 词嵌入+位置编码
         hidden_states = input_embeds + position_embeds
         # 循环层处理
@@ -267,10 +267,10 @@ def token_ids_to_text(token_ids):
 
 if __name__ == '__main__':
     torch.manual_seed(123)
-    modelConfig = ArsenalConfig()
-    torch.device("cuda")
+    modelConfig = ArsenalConfig(num_attention_heads=2, num_layers=1, head_dim=2048, max_position_embedding=4096,
+                                intermediate_size=4096, context_length=12)
     llm_model = ArsenalModel(modelConfig)
-    llm_model.to("cuda")
+    llm_model.to("cpu")
     output_ids = generate(
         model=llm_model,
         idx=text_to_token_ids("hello"),
