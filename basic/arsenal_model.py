@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers import AutoTokenizer
 
-from arsenal_model_config import ArsenalConfig
+from config.arsenal_model_config import ArsenalConfig
 
 tokenizer = AutoTokenizer.from_pretrained('../tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
