@@ -263,29 +263,3 @@ def token_ids_to_text(token_ids):
     """
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
-
-
-def calc_batch_loss(input_batch: torch.Tensor, target_batch: torch.Tensor, model: ArsenalModel, device):
-    # 使用GPU
-    input_batch, target_batch = input_batch.to(device), target_batch.to(device)
-    # 计算值(bsz,seq_len,vocab_size)
-    logits = model(input_batch)
-    # 使用交叉熵计算损失
-    # logits.flatten(0, 1):(bsz,seq_len,vocab_size)->(bsz*seq_len,vocab_size)
-    # target_batch.flatten():(bsz,seq_len)->(bsz*seq_len)
-    loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
-    return loss
-
-
-if __name__ == '__main__':
-    torch.manual_seed(123)
-    modelConfig = ArsenalConfig(num_attention_heads=2, num_layers=1, head_dim=2048, max_position_embedding=4096,
-                                intermediate_size=4096, context_length=12)
-    llm_model = ArsenalModel(modelConfig)
-    output_ids = generate(
-        model=llm_model,
-        idx=text_to_token_ids("hello"),
-        top_k=25,
-        temperature=1.4
-    )
-    print("Output text:\n", token_ids_to_text(output_ids))
