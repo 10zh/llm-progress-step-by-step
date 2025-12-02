@@ -138,14 +138,24 @@ def read_jsonl_content_generator(directory_path):
             yield contents
 
 
+def read_json_config_file():
+    """
+    读取配置文件,返回模型配置对象
+    """
+    with open('./model_config.json', 'r') as file:
+        config_data = json.load(file)
+        arsenal_config = ArsenalConfig()
+        for key, value in config_data.items():
+            if value is not None and hasattr(arsenal_config, key):
+                setattr(arsenal_config, key, value)
+        return arsenal_config
+
+
 if __name__ == '__main__':
     # 固定随机种子数
     torch.manual_seed(123)
     # 初始化模型
-    modelConfig = ArsenalConfig(hidden_size=4096, num_attention_heads=1, num_layers=1, head_dim=4096,
-                                max_position_embedding=4096,
-                                intermediate_size=4096, context_length=12)
-    trainModel = ArsenalModel(modelConfig)
+    trainModel = ArsenalModel(read_json_config_file())
     # 获取设备信息
     train_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     trainModel.to(train_device)

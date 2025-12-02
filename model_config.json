@@ -1,0 +1,9 @@
+{
+  "hidden_size": 4096,
+  "num_attention_heads": 1,
+  "num_layers": 1,
+  "head_dim": 4096,
+  "max_position_embedding": 4096,
+  "intermediate_size": 4096,
+  "context_length": 12
+}
