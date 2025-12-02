@@ -155,7 +155,8 @@ if __name__ == '__main__':
     # 固定随机种子数
     torch.manual_seed(123)
     # 初始化模型
-    trainModel = ArsenalModel(read_json_config_file())
+    train_model_config = read_json_config_file()
+    trainModel = ArsenalModel(train_model_config)
     # 获取设备信息
     train_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     trainModel.to(train_device)
@@ -164,7 +165,7 @@ if __name__ == '__main__':
     # 构造验证集
     v_loader = None
     for item in read_jsonl_content_generator("./dataset/data/val"):
-        v_loader = create_dataloader(item, num_workers=2)
+        v_loader = create_dataloader(item, num_workers=2, max_length=train_model_config.max_train_seq_length)
     # 训练开始时间
     start_time = time.time()
     # 构造训练集
@@ -172,7 +173,8 @@ if __name__ == '__main__':
         # 训练轮数
         epochs = 2
         train_losses, val_losses = train_arsenal_model(
-            trainModel, create_dataloader(item), v_loader, epochs, train_device, train_optimizer
+            trainModel, create_dataloader(item, num_workers=2, max_length=train_model_config.max_train_seq_length),
+            v_loader, epochs, train_device, train_optimizer
             , eval_freq=5, eval_iter=5
         )
     # 获取训练结束时间

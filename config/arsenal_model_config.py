@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class ArsenalConfig:
     def __init__(self, vocab_size=151936, hidden_size=4096, num_attention_heads=32, num_layers=32, attention_bias=True,
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
                  intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
-                 context_length=4096):
+                 context_length=4096, max_train_seq_length=4096):
         r"""
         以下是Arsenal模型的基础配置参数
         :param vocab_size:  Arsenal模型的词表大小,默认为151936
@@ -22,6 +23,7 @@ class ArsenalConfig:
         :param bos_token_id: 开始的词索引位置
         :param eos_token_id: 结束的词索引位置
         :param context_length: 上下文长度
+        :param max_train_seq_length: 训练时数据最大长度
         """
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
@@ -37,6 +39,7 @@ class ArsenalConfig:
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
         self.context_length = context_length
+        self.max_train_seq_length = max_train_seq_length
 
 
 __all__ = ["ArsenalConfig"]
