@@ -38,11 +38,10 @@ def create_dataloader(data, batch_size=4, shuffle=True, drop_last=True,
     # 创建数据集
     dataset = ArsenalDataset(data, max_length)
     # 创建数据加载器
-    dataloader = DataLoader(
+    return DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers
     )
-    return dataloader
