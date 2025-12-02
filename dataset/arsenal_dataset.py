@@ -1,16 +1,15 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained('../tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
 
 class ArsenalDataset(Dataset):
-    def __init__(self, data, max_length):
+    def __init__(self, tokenizer, data, max_length):
         """
         构造数据集
         :param data: 数据
         """
+        # 分词器
+        self.tokenizer = tokenizer
         # 输入样例
         self.input_ids = []
         # 输出样例
@@ -33,10 +32,10 @@ class ArsenalDataset(Dataset):
         return self.input_ids[idx], self.target_ids[idx]
 
 
-def create_dataloader(data, batch_size=4, shuffle=True, drop_last=True,
+def create_dataloader(data, tokenizer, batch_size=4, shuffle=True, drop_last=True,
                       num_workers=0, max_length=4096):
     # 创建数据集
-    dataset = ArsenalDataset(data, max_length)
+    dataset = ArsenalDataset(tokenizer, data, max_length)
     # 创建数据加载器
     return DataLoader(
         dataset,

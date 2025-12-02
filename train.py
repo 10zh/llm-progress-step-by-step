@@ -3,10 +3,13 @@ import os
 import time
 
 import torch
+from transformers import AutoTokenizer
 
 from arsenal_basic_model import ArsenalModel
 from config.arsenal_model_config import ArsenalConfig
 from dataset.arsenal_dataset import create_dataloader
+
+tokenizer = AutoTokenizer.from_pretrained('tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
 
 def calc_batch_loss(input_batch: torch.Tensor, target_batch: torch.Tensor, model: ArsenalModel, device):
@@ -134,8 +137,6 @@ def read_jsonl_content_generator(directory_path):
                                     contents.append(content)
                             except json.JSONDecodeError:
                                 continue
-            # 每个文件处理一次
-            yield contents
 
 
 def read_json_config_file():
@@ -163,20 +164,20 @@ if __name__ == '__main__':
     # 使用AdamW梯度优化器
     train_optimizer = torch.optim.AdamW(trainModel.parameters(), lr=0.00005, weight_decay=0.1)
     # 构造验证集
-    v_loader = None
-    for item in read_jsonl_content_generator("./dataset/data/val"):
-        v_loader = create_dataloader(item, num_workers=2, max_length=train_model_config.max_train_seq_length)
+    v_loader = create_dataloader(read_jsonl_content_generator("./dataset/data/val"), tokenizer=tokenizer, num_workers=2,
+                                 max_length=train_model_config.max_train_seq_length)
     # 训练开始时间
     start_time = time.time()
     # 构造训练集
-    for item in read_jsonl_content_generator("./dataset/data/train"):
-        # 训练轮数
-        epochs = 2
-        train_losses, val_losses = train_arsenal_model(
-            trainModel, create_dataloader(item, num_workers=2, max_length=train_model_config.max_train_seq_length),
-            v_loader, epochs, train_device, train_optimizer
-            , eval_freq=5, eval_iter=5
-        )
+    # 训练轮数
+    epochs = 2
+    train_total_losses, val_total_losses = train_arsenal_model(
+        trainModel,
+        create_dataloader(read_jsonl_content_generator("./dataset/data/train"), tokenizer=tokenizer, num_workers=2,
+                          max_length=train_model_config.max_train_seq_length),
+        v_loader, epochs, train_device, train_optimizer
+        , eval_freq=5, eval_iter=5
+    )
     # 获取训练结束时间
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
