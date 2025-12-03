@@ -7,8 +7,8 @@
   "intermediate_size": 16384,
   "context_length": 4096,
   "max_train_seq_length": 4096,
-  "epochs": 2,
+  "epochs": 1,
   "learn_rate": 0.0005,
   "num_workers": 1,
-  "eval_freq": 50
+  "eval_freq": 10
 }

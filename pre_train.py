@@ -81,10 +81,12 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
     global_step = 0
     # 获取训练集大小
     iter_length = len(train_loader)
+    print(f"训练集大小:{iter_length}")
     # 训练轮数
     for epoch in range(num_epochs):
         # 设置模型为训练模式
         model.train()
+        print(f"开始第:{epoch + 1}轮训练")
         # 遍历数据加载器
         for step, (input_batch, target_batch) in enumerate(train_loader):
             # 清空梯度
@@ -154,6 +156,7 @@ if __name__ == '__main__':
     train_model = ArsenalModel(train_model_config)
     # 获取设备信息
     train_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"device:{train_device}")
     train_model.to(train_device)
     # 使用AdamW梯度优化器
     train_optimizer = torch.optim.AdamW(train_model.parameters(), lr=train_model_config.learn_rate, weight_decay=0.1)

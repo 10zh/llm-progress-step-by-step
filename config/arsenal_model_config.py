@@ -6,8 +6,8 @@ class ArsenalConfig:
     def __init__(self, vocab_size=151936, hidden_size=4096, num_attention_heads=32, num_layers=32, attention_bias=True,
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
                  intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
-                 context_length=4096, max_train_seq_length=4096, epochs=2, learn_rate=0.0005, num_workers=1,
-                 eval_freq=50):
+                 context_length=4096, max_train_seq_length=4096, epochs=1, learn_rate=0.0005, num_workers=1,
+                 eval_freq=10):
         r"""
         以下是Arsenal模型的基础配置参数
         :param vocab_size:  Arsenal模型的词表大小,默认为151936
@@ -19,16 +19,16 @@ class ArsenalConfig:
         :param head_dim: 每个注意力头维度
         :param max_position_embedding: 能够处理的最大位置编码
         :param norm_eps: 层归一化时参数,默认值为1e-5
-        :param intermediate_size: 输出时中间层大小
-        :param pad_token_id: 填充的词索引位置
-        :param bos_token_id: 开始的词索引位置
-        :param eos_token_id: 结束的词索引位置
-        :param context_length: 上下文长度
-        :param max_train_seq_length: 训练时数据最大长度
-        :param epochs: 训练轮数
-        :param learn_rate: 学习率
-        :param num_workers 读取数据集的工作线程
-        :param eval_freq 每隔多少轮统计数据
+        :param intermediate_size: 输出时中间层大小,默认值为12288
+        :param pad_token_id: 填充的词索引位置,默认值为151643
+        :param bos_token_id: 开始的词索引位置,默认值为151643
+        :param eos_token_id: 结束的词索引位置,默认值为151645
+        :param context_length: 上下文长度,默认值为4096
+        :param max_train_seq_length: 训练时数据最大长度,默认值为4096
+        :param epochs: 训练轮数,默认值为1
+        :param learn_rate: 学习率,默认值为0.0005
+        :param num_workers 读取数据集的工作线程,默认值为1
+        :param eval_freq 每隔多少轮统计数据,默认值为10
         """
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
