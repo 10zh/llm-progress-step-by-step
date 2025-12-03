@@ -17,11 +17,13 @@ class ArsenalDataset(Dataset):
         # 文本最大长度
         self.max_length = max_length
         # 遍历数据
-        for item in data:
+        for (i, item) in enumerate(data):
             token_ids = tokenizer.encode(item, truncation=True, max_length=self.max_length, stride=1,
                                          padding='max_length')
             inputs = torch.tensor(token_ids[:-1])
             targets = torch.tensor(token_ids[1:])
+            if i % 1000 == 0:
+                print(f"已批量处理的数据:{i}")
             self.input_ids.append(inputs)
             self.target_ids.append(targets)
 
