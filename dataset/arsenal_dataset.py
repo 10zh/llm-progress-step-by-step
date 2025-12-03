@@ -35,7 +35,7 @@ class ArsenalDataset(Dataset):
 def create_dataloader(data, tokenizer, batch_size=4, shuffle=True, drop_last=True,
                       num_workers=0, max_length=4096):
     # 创建数据集
-    dataset = ArsenalDataset(tokenizer, data, max_length)
+    dataset = ArsenalDataset(tokenizer=tokenizer, data=data, max_length=max_length)
     # 创建数据加载器
     return DataLoader(
         dataset,

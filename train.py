@@ -44,12 +44,11 @@ def calc_loader_loss(data_loader, model: ArsenalModel, device, num_batches=None)
     return total_loss / num_batches
 
 
-def evaluate_arsenal_model(model: ArsenalModel, train_loader, val_loader, device, eval_iter):
+def evaluate_arsenal_model(model: ArsenalModel, train_loader, device, eval_iter):
     """
     评估模型
     :param model: 模型
     :param train_loader: 训练集
-    :param val_loader: 验证集
     :param device: 设备
     :param eval_iter: 验证批次
     :return: 训练集损失和验证集损失
@@ -59,70 +58,64 @@ def evaluate_arsenal_model(model: ArsenalModel, train_loader, val_loader, device
     # 防止梯度更新
     with torch.no_grad():
         # 获取训练数据损失
-        train_loss = calc_loader_loss(train_loader, model, device, num_batches=eval_iter)
-        # 获取验证数据损失
-        val_loss = calc_loader_loss(val_loader, model, device, num_batches=eval_iter)
+        loss = calc_loader_loss(train_loader, model, device, num_batches=eval_iter)
     # 重新设置为训练模式
     model.train()
-    return train_loss, val_loss
+    return loss
 
 
-def train_arsenal_model(model: ArsenalModel, train_loader, val_loader, num_epochs, device, optimizer, eval_freq,
-                        eval_iter):
+def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, optimizer, eval_freq):
     """
     训练模型
     :param model: 模型
     :param train_loader: 训练集
-    :param val_loader:  验证集
     :param num_epochs: 训练轮数
     :param device: 涉笔信息
     :param optimizer: 梯度优化器
     :param eval_freq: 每多少次评估损失
-    :param eval_iter: 评估损失批次大小
     :return: 总训练集损失,验证集损失
     """
     # 定义训练验证总损失
-    train_losses, val_losses = [], []
+    train_losses = []
     # 定义总训练步数
     global_step = 0
+    # 获取训练集大小
+    iter_length = len(train_loader)
     # 训练轮数
     for epoch in range(num_epochs):
         # 设置模型为训练模式
         model.train()
         # 遍历数据加载器
-        for input_batch, target_batch in train_loader:
+        for step, (input_batch, target_batch) in enumerate(train_loader):
             # 清空梯度
             optimizer.zero_grad()
             # 计算损失函数
             loss = calc_batch_loss(input_batch, target_batch, model, device)
+            # 记录损失
+            current_loss = loss.item()
+            train_losses.append(current_loss)
             # 基于损失函数反向传播优化
             loss.backward()
             # 更新权重
             optimizer.step()
             # 训练次数+1
             global_step += 1
-            # 多少次样本后输出损失
-            if global_step % eval_freq == 0:
-                # 评估模型损失
-                train_loss, val_loss = evaluate_arsenal_model(model, train_loader, val_loader, device, eval_iter)
-                # 添加到总损失中
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
+            # 多少次样本或最后一轮输出损失
+            if global_step % eval_freq == 0 or step == iter_length - 1:
                 print(
-                    f"训练轮数:{epoch + 1},训练次数:{global_step},训练集损失:{train_loss:.3f},验证集损失:{val_loss:.3f}")
+                    f"训练轮数:{epoch + 1},训练次数:{global_step},训练集损失:{current_loss:.6f}")
 
     # 训练完成返回总损失
-    return train_losses, val_losses
+    return train_losses
 
 
-def read_jsonl_content_generator(directory_path):
+def read_jsonl_content_generator(directory_path, text_key):
     """
         生成器版本，逐行读取，节省内存
     """
+    contents = []
     for root, dirs, files in os.walk(directory_path):
         for file in files:
-            # 每个文件内容汇总
-            contents = []
             if file.endswith('.jsonl'):
                 file_path = os.path.join(root, file)
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -131,12 +124,13 @@ def read_jsonl_content_generator(directory_path):
                         if line:
                             try:
                                 data = json.loads(line)
-                                content = data.get('content')
+                                content = data.get(text_key)
                                 if content:
                                     # 拼接字符
                                     contents.append(content)
                             except json.JSONDecodeError:
                                 continue
+    return contents
 
 
 def read_json_config_file():
@@ -157,29 +151,25 @@ if __name__ == '__main__':
     torch.manual_seed(123)
     # 初始化模型
     train_model_config = read_json_config_file()
-    trainModel = ArsenalModel(train_model_config)
+    train_model = ArsenalModel(train_model_config)
     # 获取设备信息
     train_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trainModel.to(train_device)
+    train_model.to(train_device)
     # 使用AdamW梯度优化器
-    train_optimizer = torch.optim.AdamW(trainModel.parameters(), lr=0.00005, weight_decay=0.1)
-    # 构造验证集
-    v_loader = create_dataloader(read_jsonl_content_generator("./dataset/data/val"), tokenizer=tokenizer, num_workers=2,
-                                 max_length=train_model_config.max_train_seq_length)
+    train_optimizer = torch.optim.AdamW(train_model.parameters(), lr=train_model_config.learn_rate, weight_decay=0.1)
     # 训练开始时间
     start_time = time.time()
     # 构造训练集
-    # 训练轮数
-    epochs = 2
-    train_total_losses, val_total_losses = train_arsenal_model(
-        trainModel,
-        create_dataloader(read_jsonl_content_generator("./dataset/data/train"), tokenizer=tokenizer, num_workers=2,
+    train_total_losses = train_arsenal_model(
+        train_model,
+        create_dataloader(read_jsonl_content_generator("./dataset/data/train", "content"), tokenizer=tokenizer,
+                          num_workers=train_model_config.num_workers,
                           max_length=train_model_config.max_train_seq_length),
-        v_loader, epochs, train_device, train_optimizer
-        , eval_freq=5, eval_iter=5
+        train_model_config.epochs, train_device, train_optimizer
+        , eval_freq=train_model_config.eval_freq
     )
+    torch.save(train_model.state_dict(), "arsenal_model.pth")
     # 获取训练结束时间
     end_time = time.time()
     execution_time_minutes = (end_time - start_time) / 60
     print(f"训练完成所花费时间:{execution_time_minutes:.2f}分钟.")
-    # 可视化训练损失和验证损失
