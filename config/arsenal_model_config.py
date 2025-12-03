@@ -7,7 +7,7 @@ class ArsenalConfig:
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
                  intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
                  context_length=4096, max_train_seq_length=4096, epochs=1, learn_rate=0.0005, num_workers=1,
-                 eval_freq=10, batch_size=32):
+                 eval_freq=100, batch_size=32):
         r"""
         以下是Arsenal模型的基础配置参数
         :param vocab_size:  Arsenal模型的词表大小,默认为151936

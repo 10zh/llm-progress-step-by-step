@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import sys
 
 import torch
 from transformers import AutoTokenizer
@@ -8,6 +9,8 @@ from transformers import AutoTokenizer
 from arsenal_basic_model import ArsenalModel
 from config.arsenal_model_config import ArsenalConfig
 from dataset.arsenal_dataset import create_dataloader
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 tokenizer = AutoTokenizer.from_pretrained('tokenization', trust_remote_code=True, pad_token='<|endoftext|>')
 
@@ -139,7 +142,7 @@ def read_json_config_file():
     """
     读取配置文件,返回模型配置对象
     """
-    with open('./model_config.json', 'r') as file:
+    with open('model_config.json', 'r') as file:
         config_data = json.load(file)
         arsenal_config = ArsenalConfig()
         for key, value in config_data.items():
@@ -165,7 +168,7 @@ if __name__ == '__main__':
     # 构造训练集
     train_total_losses = train_arsenal_model(
         train_model,
-        create_dataloader(read_jsonl_content_generator("./dataset/data/train", "text"), tokenizer=tokenizer,
+        create_dataloader(read_jsonl_content_generator("dataset/data/train", "text"), tokenizer=tokenizer,
                           num_workers=train_model_config.num_workers,
                           max_length=train_model_config.max_train_seq_length),
         train_model_config.epochs, train_device, train_optimizer
