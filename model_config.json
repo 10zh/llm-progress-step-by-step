@@ -10,5 +10,6 @@
   "epochs": 1,
   "learn_rate": 0.0005,
   "num_workers": 1,
-  "eval_freq": 10
+  "eval_freq": 10,
+  "batch_size": 32
 }

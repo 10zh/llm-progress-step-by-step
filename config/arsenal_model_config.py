@@ -7,7 +7,7 @@ class ArsenalConfig:
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
                  intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
                  context_length=4096, max_train_seq_length=4096, epochs=1, learn_rate=0.0005, num_workers=1,
-                 eval_freq=10):
+                 eval_freq=10, batch_size=32):
         r"""
         以下是Arsenal模型的基础配置参数
         :param vocab_size:  Arsenal模型的词表大小,默认为151936
@@ -29,6 +29,7 @@ class ArsenalConfig:
         :param learn_rate: 学习率,默认值为0.0005
         :param num_workers 读取数据集的工作线程,默认值为1
         :param eval_freq 每隔多少轮统计数据,默认值为10
+        :param batch_size 数据批量大小,默认值为32
         """
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
@@ -49,6 +50,7 @@ class ArsenalConfig:
         self.learn_rate = learn_rate
         self.num_workers = num_workers
         self.eval_freq = eval_freq
+        self.batch_size = batch_size
 
 
 __all__ = ["ArsenalConfig"]

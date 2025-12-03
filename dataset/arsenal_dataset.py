@@ -22,7 +22,7 @@ class ArsenalDataset(Dataset):
                                          padding='max_length')
             inputs = torch.tensor(token_ids[:-1])
             targets = torch.tensor(token_ids[1:])
-            if i % 1000 == 0:
+            if i % 50000 == 0:
                 print(f"已批量处理的数据:{i}")
             self.input_ids.append(inputs)
             self.target_ids.append(targets)
@@ -34,7 +34,7 @@ class ArsenalDataset(Dataset):
         return self.input_ids[idx], self.target_ids[idx]
 
 
-def create_dataloader(data, tokenizer, batch_size=4, shuffle=True, drop_last=True,
+def create_dataloader(data, tokenizer, batch_size=32, shuffle=True, drop_last=True,
                       num_workers=0, max_length=4096):
     # 创建数据集
     dataset = ArsenalDataset(tokenizer=tokenizer, data=data, max_length=max_length)
