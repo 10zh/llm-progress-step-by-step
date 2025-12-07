@@ -263,3 +263,17 @@ def token_ids_to_text(token_ids):
     """
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
+
+
+if __name__ == '__main__':
+    config = ArsenalConfig(hidden_size=512, num_attention_heads=8, num_layers=8, head_dim=64,
+                           max_position_embedding=512, intermediate_size=2048, context_length=512,
+                           max_train_seq_length=512, epochs=1, learn_rate=0.0005, num_workers=1, eval_freq=100,
+                           batch_size=32)
+    model = ArsenalModel(config)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.load_state_dict(
+        torch.load("E:\\ai-env\model\small\\arsenal_model.pth", map_location=device, weights_only=True))
+    model.eval()
+    answer = generate(model, text_to_token_ids("请解释什么是人工智能。"), temperature=1.0, top_k=10)
+    print(token_ids_to_text(answer))
