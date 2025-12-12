@@ -166,7 +166,7 @@ if __name__ == '__main__':
     # 训练开始时间
     start_time = time.time()
     # 构造训练集
-    train_total_losses = train_arsenal_model(
+    train_arsenal_model(
         train_model,
         create_dataloader(read_jsonl_content_generator("dataset/data/train", "text"), tokenizer=tokenizer,
                           num_workers=train_model_config.num_workers,

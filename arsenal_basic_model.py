@@ -275,5 +275,5 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\model\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("请解释什么是人工智能。"), temperature=1.0, top_k=10)
+    answer = generate(model, text_to_token_ids("能不能给我推荐一些性价比不错的酒店呢"), temperature=0.0, top_k=5)
     print(token_ids_to_text(answer))
