@@ -10,32 +10,34 @@ class ArsenalDataset(Dataset):
         """
         # 分词器
         self.tokenizer = tokenizer
-        # 输入样例
-        self.input_ids = []
-        # 输出样例
-        self.target_ids = []
+        # 数据
+        self.data = []
         # 文本最大长度
         self.max_length = max_length
         # 遍历数据
         for (i, item) in enumerate(data):
-            token_ids = tokenizer.encode(item, truncation=True, max_length=self.max_length, stride=1,
-                                         padding='max_length')
-            inputs = torch.tensor(token_ids[:-1])
-            targets = torch.tensor(token_ids[1:])
             if i % 50000 == 0:
                 print(f"已批量处理的数据:{i}")
-            self.input_ids.append(inputs)
-            self.target_ids.append(targets)
+            data.append(item)
 
     def __len__(self):
-        return len(self.input_ids)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        return self.input_ids[idx], self.target_ids[idx]
+        # 根据索引获取元素
+        data = self.data[idx]
+        # 分词编码
+        token_ids = self.tokenizer.encode(data, truncation=True, max_length=self.max_length, stride=1,
+                                          padding='max_length')
+        # 获取训练集
+        input_ids = torch.tensor(token_ids[:-1])
+        # 获取验证结果
+        target_ids = torch.tensor(token_ids[1:])
+        return input_ids, target_ids
 
 
 def create_dataloader(data, tokenizer, batch_size=32, shuffle=True, drop_last=True,
-                      num_workers=0, max_length=4096):
+                      num_workers=1, max_length=4096):
     # 创建数据集
     dataset = ArsenalDataset(tokenizer=tokenizer, data=data, max_length=max_length)
     # 创建数据加载器
