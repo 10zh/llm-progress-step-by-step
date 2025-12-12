@@ -96,15 +96,17 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
             optimizer.zero_grad()
             # 计算损失
             loss = calc_batch_loss(input_batch, target_batch, model, device)
-            # 记录损失
-            current_loss = loss.item()
-            train_losses.append(current_loss)
             # 基于损失函数反向传播优化
             loss.backward()
+            # 梯度裁剪
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             # 更新权重
             optimizer.step()
             # 训练次数+1
             global_step += 1
+            # 记录损失
+            current_loss = loss.item()
+            train_losses.append(current_loss)
             # 多少次样本或最后一轮输出损失
             if global_step % eval_freq == 0 or step == iter_length - 1:
                 print(
