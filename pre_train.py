@@ -1,7 +1,7 @@
 import json
 import os
-import time
 import sys
+import time
 
 import torch
 from transformers import AutoTokenizer
@@ -78,12 +78,12 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
     :param eval_freq: 每多少次评估损失
     :return: 总训练集损失,验证集损失
     """
-    # 定义训练验证总损失
-    train_losses = []
     # 定义总训练步数
     global_step = 0
     # 获取训练集大小
     iter_length = len(train_loader)
+    # 梯度累积
+    accumulation_steps = 8
     print(f"训练集大小:{iter_length}")
     # 训练轮数
     for epoch in range(num_epochs):
@@ -92,28 +92,26 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
         print(f"开始第:{epoch + 1}轮训练")
         # 遍历数据加载器
         for step, (input_batch, target_batch) in enumerate(train_loader):
-            # 清空梯度
-            optimizer.zero_grad()
             # 计算损失
             loss = calc_batch_loss(input_batch, target_batch, model, device)
-            # 基于损失函数反向传播优化
+            # 梯度累加
+            loss = loss / accumulation_steps
+            # 反向传播
             loss.backward()
-            # 梯度裁剪
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            # 更新权重
-            optimizer.step()
+            if ((step + 1) % accumulation_steps == 0) or (step + 1 == iter_length):
+                # 梯度裁剪
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                # 更新权重
+                optimizer.step()
+                # 清空梯度
+                optimizer.zero_grad()
             # 训练次数+1
             global_step += 1
-            # 记录损失
-            current_loss = loss.item()
-            train_losses.append(current_loss)
             # 多少次样本或最后一轮输出损失
             if global_step % eval_freq == 0 or step == iter_length - 1:
+                current_loss = loss.item() * accumulation_steps
                 print(
                     f"训练轮数:{epoch + 1},训练次数:{global_step},训练集损失:{current_loss:.6f}")
-
-    # 训练完成返回总损失
-    return train_losses
 
 
 def read_jsonl_content_generator(directory_path, text_key):
