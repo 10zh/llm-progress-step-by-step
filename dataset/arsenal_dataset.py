@@ -11,21 +11,20 @@ class ArsenalDataset(Dataset):
         # 分词器
         self.tokenizer = tokenizer
         # 数据
-        self.data = []
+        self.textData = []
         # 文本最大长度
         self.max_length = max_length
         # 遍历数据
-        for (i, item) in enumerate(data):
-            if i % 50000 == 0:
-                print(f"已批量处理的数据:{i}")
-            data.append(item)
+        for (i, item) in enumerate(data, 1):
+            self.textData.append(item)
+        print(f"数据处理完毕:{len(self.textData)}")
 
     def __len__(self):
-        return len(self.data)
+        return len(self.textData)
 
     def __getitem__(self, idx):
         # 根据索引获取元素
-        data = self.data[idx]
+        data = self.textData[idx]
         # 分词编码
         token_ids = self.tokenizer.encode(data, truncation=True, max_length=self.max_length, stride=1,
                                           padding='max_length')

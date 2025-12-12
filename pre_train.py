@@ -94,7 +94,7 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
         for step, (input_batch, target_batch) in enumerate(train_loader):
             # 清空梯度
             optimizer.zero_grad()
-            # 计算损失函数
+            # 计算损失
             loss = calc_batch_loss(input_batch, target_batch, model, device)
             # 记录损失
             current_loss = loss.item()
