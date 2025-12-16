@@ -91,6 +91,7 @@ class ArsenalAttention(nn.Module):
         attn_outputs = self.o_proj(attn_outputs)
         return attn_outputs, attn_weights
 
+
 def compute_rope_freq(config: ArsenalConfig, position_ids):
     """
     计算旋转频率
@@ -101,24 +102,43 @@ def compute_rope_freq(config: ArsenalConfig, position_ids):
     hidden_dim = config.hidden_size
     # 初始化注意力因子为1.0
     attn_factor = 1.0
-    # 两两分组,每组元素应该旋转的频率size=(bsz,dim/2)
+    # 两两分组,每组元素应该旋转的频率size=(dim/2)
     inv_freq = 1.0 / (rope_base ** (
             torch.arange(0, hidden_dim, 2, dtype=torch.int64) / hidden_dim))
     # (dim/2)->(1,dim/2,1)->(bsz,dim/2,1)
     inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
-    # (bsz,ids)->(bsz,1,ids)
+    # (bsz,seq_len)->(bsz,1,seq_len)
     position_ids_expanded = position_ids[:, None, :].float()
-    # 计算对应的cos和sin的值(bsz,dim/2,1))@(bsz,1,ids)=>(bsz,dim/2,ids)=>(bsz,ids,dim/2)
+    # 计算对应的cos和sin的值(bsz,dim/2,1))@(bsz,1,seq_len)=>(bsz,dim/2,seq_len)=>(bsz,seq_len,dim/2)
     freq_s = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
-    # (bsz,ids,dim/2)=>(bsz,ids,dim)
+    # (bsz,seq_len,dim/2)=>(bsz,seq_len,dim)
     emb = torch.cat((freq_s, freq_s), dim=-1)
     cos = emb.cos() * attn_factor
     sin = emb.sin() * attn_factor
     return cos, sin
 
 
+def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
+    """
+    应用旋转位置编码
+    """
+    # (bsz,seq_len,dim)->(bsz,1,seq_len,dim)
+    cos = cos.unsequeeze(unsqueeze_dim)
+    # (bsz,ids,dim)->(bsz,1,seq_len,dim)
+    sin = sin.unsqueeze(unsqueeze_dim)
+    # q->(bsz,num_attention_heads,seq_len,head_dim) * (bsz,1,seq_len,dim) -> (bsz,num_attention_heads,seq_len,head_dim)
+    # k->(bsz,num_attention_heads,seq_len,head_dim) * (bsz,1,seq_len,dim) -> (bsz,num_attention_heads,seq_len,head_dim)
+    q_embed = (q * cos) + (rotate_half(q) * sin)
+    k_embed = (k * cos) + (rotate_half(k) * sin)
+    return q_embed, k_embed
+
+
 def rotate_half(x):
+    # (bsz,num_attention_heads,seq_len,head_dim) -> (bsz,num_attention_heads,seq_len,head_dim/2)
+    # 取前部分
     x1 = x[..., : x.shape[-1] // 2]
+    # 取后部分
+    # (bsz,num_attention_heads,seq_len,head_dim) -> (bsz,num_attention_heads,seq_len,head_dim/2)
     x2 = x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
 
@@ -298,9 +318,10 @@ def token_ids_to_text(token_ids):
 
 if __name__ == '__main__':
     arsenal_model_config = ArsenalConfig(hidden_size=512, num_attention_heads=8, num_layers=8, head_dim=64,
-                           max_position_embedding=512, intermediate_size=2048, context_length=512,
-                           max_train_seq_length=512, epochs=1, learn_rate=0.0005, num_workers=1, eval_freq=100,
-                           batch_size=32)
+                                         max_position_embedding=512, intermediate_size=2048, context_length=512,
+                                         max_train_seq_length=512, epochs=1, learn_rate=0.0005, num_workers=1,
+                                         eval_freq=100,
+                                         batch_size=32)
     model = ArsenalModel(arsenal_model_config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.load_state_dict(
