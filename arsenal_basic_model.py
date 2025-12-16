@@ -91,6 +91,37 @@ class ArsenalAttention(nn.Module):
         attn_outputs = self.o_proj(attn_outputs)
         return attn_outputs, attn_weights
 
+def compute_rope_freq(config: ArsenalConfig, position_ids):
+    """
+    计算旋转频率
+    """
+    # 获取基础频率
+    rope_base = config.rope_base
+    # 获取嵌入维度
+    hidden_dim = config.hidden_size
+    # 初始化注意力因子为1.0
+    attn_factor = 1.0
+    # 两两分组,每组元素应该旋转的频率size=(bsz,dim/2)
+    inv_freq = 1.0 / (rope_base ** (
+            torch.arange(0, hidden_dim, 2, dtype=torch.int64) / hidden_dim))
+    # (dim/2)->(1,dim/2,1)->(bsz,dim/2,1)
+    inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
+    # (bsz,ids)->(bsz,1,ids)
+    position_ids_expanded = position_ids[:, None, :].float()
+    # 计算对应的cos和sin的值(bsz,dim/2,1))@(bsz,1,ids)=>(bsz,dim/2,ids)=>(bsz,ids,dim/2)
+    freq_s = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
+    # (bsz,ids,dim/2)=>(bsz,ids,dim)
+    emb = torch.cat((freq_s, freq_s), dim=-1)
+    cos = emb.cos() * attn_factor
+    sin = emb.sin() * attn_factor
+    return cos, sin
+
+
+def rotate_half(x):
+    x1 = x[..., : x.shape[-1] // 2]
+    x2 = x[..., x.shape[-1] // 2:]
+    return torch.cat((-x2, x1), dim=-1)
+
 
 class ArsenalLayerNorm(nn.Module):
     """使用层归一化
@@ -266,11 +297,11 @@ def token_ids_to_text(token_ids):
 
 
 if __name__ == '__main__':
-    config = ArsenalConfig(hidden_size=512, num_attention_heads=8, num_layers=8, head_dim=64,
+    arsenal_model_config = ArsenalConfig(hidden_size=512, num_attention_heads=8, num_layers=8, head_dim=64,
                            max_position_embedding=512, intermediate_size=2048, context_length=512,
                            max_train_seq_length=512, epochs=1, learn_rate=0.0005, num_workers=1, eval_freq=100,
                            batch_size=32)
-    model = ArsenalModel(config)
+    model = ArsenalModel(arsenal_model_config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.load_state_dict(
         torch.load("E:\\ai-env\model\small\\arsenal_model.pth", map_location=device, weights_only=True))
