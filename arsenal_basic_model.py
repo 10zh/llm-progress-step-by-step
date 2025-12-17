@@ -240,7 +240,7 @@ class ArsenalModel(nn.Module):
         self.num_layers = config.num_layers
         self.vocab_size = config.vocab_size
         self.embed_tokens = nn.Embedding(self.vocab_size, config.hidden_size, padding_idx=self.pad_token_id)
-        #self.position_embeddings = nn.Embedding(config.max_position_embedding, config.hidden_size)
+        # self.position_embeddings = nn.Embedding(config.max_position_embedding, config.hidden_size)
         self.layers = nn.ModuleList(
             [
                 ArsenalDecoderLayer(config, layer_idx) for layer_idx in range(self.num_layers)
@@ -342,5 +342,6 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("我最近迷上了披萨，有什么好吃的披萨你可以推荐吗？"), temperature=0.0, top_k=5)
+    answer = generate(model, text_to_token_ids("我最近迷上了披萨，有什么好吃的披萨你可以推荐吗？"), temperature=0.0,
+                      top_k=5)
     print(token_ids_to_text(answer))
