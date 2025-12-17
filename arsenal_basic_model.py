@@ -240,7 +240,6 @@ class ArsenalModel(nn.Module):
         self.num_layers = config.num_layers
         self.vocab_size = config.vocab_size
         self.embed_tokens = nn.Embedding(self.vocab_size, config.hidden_size, padding_idx=self.pad_token_id)
-        # self.position_embeddings = nn.Embedding(config.max_position_embedding, config.hidden_size)
         self.layers = nn.ModuleList(
             [
                 ArsenalDecoderLayer(config, layer_idx) for layer_idx in range(self.num_layers)
@@ -258,13 +257,7 @@ class ArsenalModel(nn.Module):
         batch_size, seq_len = input_ids.shape
         # 词嵌入
         hidden_states = self.embed_tokens(input_ids)
-        # --------采用旋转位置编码取代--------
-        # 采用绝对位置方式计算位置编码
-        # position_embeds = self.position_embeddings(torch.arange(seq_len, device=input_ids.device))
-        # 词嵌入+位置编码
-        # hidden_states = input_embeds + position_embeds
-        # --------采用旋转位置编码取代--------
-        # 只提取seq_len部分
+        # 采用旋转位置编码取代-
         position_embeddings = (
             self.freq_cos[:, :seq_len],
             self.freq_sin[:, :seq_len]
