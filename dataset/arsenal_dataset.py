@@ -26,12 +26,12 @@ class ArsenalDataset(Dataset):
         # 根据索引获取元素
         data = self.textData[idx]
         # 分词编码
-        token_ids = self.tokenizer.encode(data, truncation=True, max_length=self.max_length + 1, stride=1,
+        token_ids = self.tokenizer.encode(data, truncation=True, max_length=self.max_length, return_tensors='pt',
                                           padding='max_length')
         # 获取训练集
-        input_ids = torch.tensor(token_ids[:-1])
+        input_ids = token_ids[:-1]
         # 获取验证结果
-        target_ids = torch.tensor(token_ids[1:])
+        target_ids = token_ids[1:]
         return input_ids, target_ids
 
 

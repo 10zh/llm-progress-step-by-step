@@ -54,7 +54,7 @@ class ArsenalAttention(nn.Module):
         k_states = self.k_proj(hidden_states)
         # 改变Shape为:(bsz,seq_len,hidden_size)->(bsz,seq_len,num_attention_heads,head_dim)
         k_states = k_states.view(bsz, seq_len, self.config.num_attention_heads, self.head_dim)
-        # 转置为:(bsz,num_attention_heads,seq_len,head_dim)
+        # 将K转置为:(bsz,num_attention_heads,seq_len,head_dim)
         k_states = k_states.transpose(1, 2)
 
         # 计算q,k旋转位置编码
@@ -104,12 +104,12 @@ def compute_rope_freq(config: ArsenalConfig, position_ids):
     # 获取基础频率
     rope_base = config.rope_base
     # 获取嵌入维度
-    hidden_dim = config.hidden_size
+    dim = config.head_dim
     # 初始化注意力因子为1.0
     attn_factor = 1.0
     # 两两分组,每组元素应该旋转的频率size=(dim/2)
     inv_freq = 1.0 / (rope_base ** (
-            torch.arange(0, hidden_dim, 2, dtype=torch.int64) / hidden_dim))
+            torch.arange(0, dim, 2, dtype=torch.int64) / dim))
     # (dim/2)->(1,dim/2,1)->(1,dim/2,1)
     inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
     # (1,max_position_embedding)->(1,1,max_position_embedding)
@@ -131,8 +131,8 @@ def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
     cos = cos.unsqueeze(unsqueeze_dim)
     # (1,max_position_embedding,dim)->(1,1,max_position_embedding,dim)
     sin = sin.unsqueeze(unsqueeze_dim)
-    # q->(bsz,num_attention_heads,seq_len,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
-    # k->(bsz,num_attention_heads,seq_len,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
+    # q->(bsz,seq_len,num_attention_heads,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
+    # k->(bsz,seq_len,num_attention_heads,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
@@ -240,7 +240,7 @@ class ArsenalModel(nn.Module):
         self.num_layers = config.num_layers
         self.vocab_size = config.vocab_size
         self.embed_tokens = nn.Embedding(self.vocab_size, config.hidden_size, padding_idx=self.pad_token_id)
-        self.position_embeddings = nn.Embedding(config.max_position_embedding, config.hidden_size)
+        #self.position_embeddings = nn.Embedding(config.max_position_embedding, config.hidden_size)
         self.layers = nn.ModuleList(
             [
                 ArsenalDecoderLayer(config, layer_idx) for layer_idx in range(self.num_layers)
@@ -266,8 +266,8 @@ class ArsenalModel(nn.Module):
         # --------采用旋转位置编码取代--------
         # 只提取seq_len部分
         position_embeddings = (
-            self.freq_cos[:seq_len],
-            self.freq_sin[:seq_len]
+            self.freq_cos[:, :seq_len],
+            self.freq_sin[:, :seq_len]
         )
         # 循环层处理
         for decoder_layer in self.layers[:self.num_layers]:
@@ -340,7 +340,7 @@ if __name__ == '__main__':
     model = ArsenalModel(arsenal_model_config)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.load_state_dict(
-        torch.load("E:\\ai-env\model\small\\arsenal_model.pth", map_location=device, weights_only=True))
+        torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("能不能给我推荐一些性价比不错的酒店呢"), temperature=0.0, top_k=5)
+    answer = generate(model, text_to_token_ids("我最近迷上了披萨，有什么好吃的披萨你可以推荐吗？"), temperature=0.0, top_k=5)
     print(token_ids_to_text(answer))
