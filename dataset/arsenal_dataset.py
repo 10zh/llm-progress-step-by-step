@@ -1,4 +1,3 @@
-import torch
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -26,8 +25,9 @@ class ArsenalDataset(Dataset):
         # 根据索引获取元素
         data = self.textData[idx]
         # 分词编码
-        token_ids = self.tokenizer.encode(data, truncation=True, max_length=self.max_length, return_tensors='pt',
-                                          padding='max_length')
+        encoding = self.tokenizer(data, truncation=True, max_length=self.max_length, return_tensors='pt',
+                                  padding='max_length')
+        token_ids = encoding.input_ids.squeeze()
         # 获取训练集
         input_ids = token_ids[:-1]
         # 获取验证结果
