@@ -128,7 +128,7 @@ def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
     应用旋转位置编码
     """
     # (1,max_position_embedding,dim)->(1,1,max_position_embedding,dim)
-    cos = cos.unsequeeze(unsqueeze_dim)
+    cos = cos.unsqueeze(unsqueeze_dim)
     # (1,max_position_embedding,dim)->(1,1,max_position_embedding,dim)
     sin = sin.unsqueeze(unsqueeze_dim)
     # q->(bsz,num_attention_heads,seq_len,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
@@ -248,7 +248,7 @@ class ArsenalModel(nn.Module):
         )
         self.norm = ArsenalLayerNorm(config.hidden_size, config.norm_eps)
         self.output_head = nn.Linear(config.hidden_size, config.vocab_size)
-        freq_cos, freq_sin = compute_rope_freq(config, torch.arange(config.max_position_embedding))
+        freq_cos, freq_sin = compute_rope_freq(config, torch.arange(config.max_position_embedding).unsqueeze(0))
         self.register_buffer("freq_cos", freq_cos, persistent=False)
         self.register_buffer("freq_sin", freq_sin, persistent=False)
 
@@ -266,8 +266,8 @@ class ArsenalModel(nn.Module):
         # --------采用旋转位置编码取代--------
         # 只提取seq_len部分
         position_embeddings = (
-            self.freq_cos[seq_len],
-            self.freq_sin[seq_len]
+            self.freq_cos[:seq_len],
+            self.freq_sin[:seq_len]
         )
         # 循环层处理
         for decoder_layer in self.layers[:self.num_layers]:
