@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
@@ -38,7 +38,7 @@ class ArsenalAttention(nn.Module):
             torch.triu(torch.ones(config.max_position_embedding, config.max_position_embedding), diagonal=1)
         )
 
-    def forward(self, hidden_states: torch.Tensor):
+    def forward(self, hidden_states: torch.Tensor, position_embeddings: Tuple[torch.Tensor, torch.Tensor]):
         bsz, seq_len, _ = hidden_states.shape
 
         # Query计算
@@ -56,6 +56,10 @@ class ArsenalAttention(nn.Module):
         k_states = k_states.view(bsz, seq_len, self.config.num_attention_heads, self.head_dim)
         # 转置为:(bsz,num_attention_heads,seq_len,head_dim)
         k_states = k_states.transpose(1, 2)
+
+        # 计算q,k旋转位置编码
+        cos, sin = position_embeddings
+        q_states, k_states = apply_rotary_pos_emb(q_states, k_states, cos, sin)
 
         # Value计算
         # Shape变化:(bsz,seq_len,hidden_size)->(bsz,seq_len,config.num_attention_heads * self.head_dim)
@@ -95,6 +99,7 @@ class ArsenalAttention(nn.Module):
 def compute_rope_freq(config: ArsenalConfig, position_ids):
     """
     计算旋转频率
+    position_ids(1,max_position_embedding)
     """
     # 获取基础频率
     rope_base = config.rope_base
@@ -105,13 +110,13 @@ def compute_rope_freq(config: ArsenalConfig, position_ids):
     # 两两分组,每组元素应该旋转的频率size=(dim/2)
     inv_freq = 1.0 / (rope_base ** (
             torch.arange(0, hidden_dim, 2, dtype=torch.int64) / hidden_dim))
-    # (dim/2)->(1,dim/2,1)->(bsz,dim/2,1)
+    # (dim/2)->(1,dim/2,1)->(1,dim/2,1)
     inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
-    # (bsz,seq_len)->(bsz,1,seq_len)
+    # (1,max_position_embedding)->(1,1,max_position_embedding)
     position_ids_expanded = position_ids[:, None, :].float()
-    # 计算对应的cos和sin的值(bsz,dim/2,1))@(bsz,1,seq_len)=>(bsz,dim/2,seq_len)=>(bsz,seq_len,dim/2)
+    # 计算对应的cos和sin的值(1,dim/2,1))@(1,1,max_position_embedding)=>(1,dim/2,max_position_embedding)=>(1,max_position_embedding,dim/2)
     freq_s = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
-    # (bsz,seq_len,dim/2)=>(bsz,seq_len,dim)
+    # (1,max_position_embedding,dim/2)=>(1,max_position_embedding,dim)
     emb = torch.cat((freq_s, freq_s), dim=-1)
     cos = emb.cos() * attn_factor
     sin = emb.sin() * attn_factor
@@ -122,12 +127,12 @@ def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
     """
     应用旋转位置编码
     """
-    # (bsz,seq_len,dim)->(bsz,1,seq_len,dim)
+    # (1,max_position_embedding,dim)->(1,1,max_position_embedding,dim)
     cos = cos.unsequeeze(unsqueeze_dim)
-    # (bsz,ids,dim)->(bsz,1,seq_len,dim)
+    # (1,max_position_embedding,dim)->(1,1,max_position_embedding,dim)
     sin = sin.unsqueeze(unsqueeze_dim)
-    # q->(bsz,num_attention_heads,seq_len,head_dim) * (bsz,1,seq_len,dim) -> (bsz,num_attention_heads,seq_len,head_dim)
-    # k->(bsz,num_attention_heads,seq_len,head_dim) * (bsz,1,seq_len,dim) -> (bsz,num_attention_heads,seq_len,head_dim)
+    # q->(bsz,num_attention_heads,seq_len,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
+    # k->(bsz,num_attention_heads,seq_len,head_dim) * (1,1,max_position_embedding,dim) -> (bsz,num_attention_heads,max_position_embedding,dim)
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
@@ -202,13 +207,13 @@ class ArsenalDecoderLayer(nn.Module):
         self.input_layer_norm = ArsenalLayerNorm(self.hidden_size, config.norm_eps)
         self.post_attention_layer_norm = ArsenalLayerNorm(self.hidden_size, config.norm_eps)
 
-    def forward(self, hidden_states: torch.Tensor):
+    def forward(self, hidden_states: torch.Tensor, position_embeddings):
         # 定义残差
         residual = hidden_states
         # 层归一化处理
         hidden_states = self.input_layer_norm(hidden_states)
         # 自注意力机制
-        hidden_states, _ = self.self_attention(hidden_states)
+        hidden_states, _ = self.self_attention(hidden_states, position_embeddings)
         # 残差连接
         hidden_states = residual + hidden_states
         # 全连接层
@@ -243,20 +248,30 @@ class ArsenalModel(nn.Module):
         )
         self.norm = ArsenalLayerNorm(config.hidden_size, config.norm_eps)
         self.output_head = nn.Linear(config.hidden_size, config.vocab_size)
+        freq_cos, freq_sin = compute_rope_freq(config, torch.arange(config.max_position_embedding))
+        self.register_buffer("freq_cos", freq_cos, persistent=False)
+        self.register_buffer("freq_sin", freq_sin, persistent=False)
 
     def forward(self, input_ids: Optional[torch.Tensor] = None):
         if input_ids is None:
             raise ValueError("input_ids不能为空")
         batch_size, seq_len = input_ids.shape
         # 词嵌入
-        input_embeds = self.embed_tokens(input_ids)
+        hidden_states = self.embed_tokens(input_ids)
+        # --------采用旋转位置编码取代--------
         # 采用绝对位置方式计算位置编码
-        position_embeds = self.position_embeddings(torch.arange(seq_len, device=input_ids.device))
+        # position_embeds = self.position_embeddings(torch.arange(seq_len, device=input_ids.device))
         # 词嵌入+位置编码
-        hidden_states = input_embeds + position_embeds
+        # hidden_states = input_embeds + position_embeds
+        # --------采用旋转位置编码取代--------
+        # 只提取seq_len部分
+        position_embeddings = (
+            self.freq_cos[seq_len],
+            self.freq_sin[seq_len]
+        )
         # 循环层处理
         for decoder_layer in self.layers[:self.num_layers]:
-            hidden_states = decoder_layer(hidden_states)
+            hidden_states = decoder_layer(hidden_states, position_embeddings)
         # 归一化处理
         hidden_states = self.norm(hidden_states)
         # 输出结果(bsz,seq_len,hidden_size)->(bsz,seq_len,vocab_size)
