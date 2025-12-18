@@ -107,17 +107,18 @@ def compute_rope_freq(config: ArsenalConfig, position_ids):
     dim = config.head_dim
     # 初始化注意力因子为1.0
     attn_factor = 1.0
-    # 两两分组,每组元素应该旋转的频率size=(dim/2)
+    # 两两分组,每组元素应该旋转的频率size=(head_dim/2)
     inv_freq = 1.0 / (rope_base ** (
             torch.arange(0, dim, 2, dtype=torch.int64) / dim))
-    # (dim/2)->(1,dim/2,1)->(1,dim/2,1)
+    # (head_dim/2)->(1,head_dim/2,1)->(1,head_dim/2,1)
     inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
     # (1,max_position_embedding)->(1,1,max_position_embedding)
     position_ids_expanded = position_ids[:, None, :].float()
-    # 计算对应的cos和sin的值(1,dim/2,1))@(1,1,max_position_embedding)=>(1,dim/2,max_position_embedding)=>(1,max_position_embedding,dim/2)
+    # 计算对应的cos和sin的值(1,head_dim/2,1))@(1,1,max_position_embedding)=>(1,head_dim/2,max_position_embedding)=>(1,max_position_embedding,head_dim/2)
     freq_s = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
-    # (1,max_position_embedding,dim/2)=>(1,max_position_embedding,dim)
+    # (1,max_position_embedding,head_dim/2)=>(1,max_position_embedding,head_dim)
     emb = torch.cat((freq_s, freq_s), dim=-1)
+    # 计算m*cos m*sin
     cos = emb.cos() * attn_factor
     sin = emb.sin() * attn_factor
     return cos, sin
@@ -325,6 +326,7 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("请问最近天气怎么样？"), temperature=3,
-                      top_k=5)
+    answer = generate(model, text_to_token_ids("请帮我回答「地球上面最高的山峰是什么？」"),
+                      temperature=0.0,
+                      top_k=None)
     print(token_ids_to_text(answer))

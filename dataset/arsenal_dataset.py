@@ -33,7 +33,10 @@ class ArsenalDataset(Dataset):
         input_ids = torch.tensor(token_ids[:-1])
         # 获取验证结果
         target_ids = torch.tensor(token_ids[1:])
-        return input_ids, target_ids
+        # pad_token不应该参与损失的计算
+        loss_mask = (input_ids != self.tokenizer.pad_token_id)
+        loss_mask = torch.tensor(loss_mask[1:], dtype=torch.long)
+        return input_ids, target_ids, loss_mask
 
 
 def create_dataloader(data, tokenizer, batch_size=32, shuffle=True, drop_last=True,

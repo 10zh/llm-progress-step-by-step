@@ -91,9 +91,11 @@ def train_arsenal_model(model: ArsenalModel, train_loader, num_epochs, device, o
         model.train()
         print(f"开始第:{epoch + 1}轮训练")
         # 遍历数据加载器
-        for step, (input_batch, target_batch) in enumerate(train_loader):
+        for step, (input_batch, target_batch, loss_mask) in enumerate(train_loader):
             # 计算损失
             loss = calc_batch_loss(input_batch, target_batch, model, device)
+            # 填充符号不参与损失计算
+            loss = (loss * loss_mask.to("cuda")).sum() / loss_mask.sum()
             # 梯度累加
             loss = loss / accumulation_steps
             # 反向传播
