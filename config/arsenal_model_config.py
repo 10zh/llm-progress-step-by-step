@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 @dataclass
 class ArsenalConfig:
-    def __init__(self, vocab_size=151936, hidden_size=4096, num_attention_heads=32, num_layers=32, attention_bias=True,
+    def __init__(self, vocab_size=6400, hidden_size=4096, num_attention_heads=32, num_layers=32, attention_bias=True,
                  attention_dropout=0.0, head_dim=128, max_position_embedding=32768, norm_eps=1e-5,
-                 intermediate_size=12288, pad_token_id=151643, bos_token_id=151643, eos_token_id=151645,
+                 intermediate_size=12288, pad_token_id=0, bos_token_id=1, eos_token_id=2,
                  context_length=4096, max_train_seq_length=4096, epochs=1, learn_rate=0.0005, num_workers=1,
                  eval_freq=100, batch_size=32, rope_base=1e6):
         r"""
@@ -20,9 +20,9 @@ class ArsenalConfig:
         :param max_position_embedding: 能够处理的最大位置编码
         :param norm_eps: 层归一化时参数,默认值为1e-5
         :param intermediate_size: 输出时中间层大小,默认值为12288
-        :param pad_token_id: 填充的词索引位置,默认值为151643
-        :param bos_token_id: 开始的词索引位置,默认值为151643
-        :param eos_token_id: 结束的词索引位置,默认值为151645
+        :param pad_token_id: 填充的词索引位置,默认值为0
+        :param bos_token_id: 开始的词索引位置,默认值为1
+        :param eos_token_id: 结束的词索引位置,默认值为2
         :param context_length: 上下文长度,默认值为4096
         :param max_train_seq_length: 训练时数据最大长度,默认值为4096
         :param epochs: 训练轮数,默认值为1

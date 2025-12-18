@@ -139,39 +139,29 @@ def apply_rotary_pos_emb(q, k, cos, sin, unsqueeze_dim=1):
 
 
 def rotate_half(x):
-    # (bsz,num_attention_heads,seq_len,head_dim) -> (bsz,num_attention_heads,seq_len,head_dim/2)
-    # 取前部分
+    """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
-    # 取后部分
-    # (bsz,num_attention_heads,seq_len,head_dim) -> (bsz,num_attention_heads,seq_len,head_dim/2)
     x2 = x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
 
 
-class ArsenalLayerNorm(nn.Module):
+class RMSNorm(nn.Module):
     """使用层归一化
         公式为:(样本-均值/(方差+很小的数(默认1e-5)防止除零)的平方根)*缩放+偏移
     """
 
     def __init__(self, hidden_size, eps=1e-5):
-        super(ArsenalLayerNorm, self).__init__()
+        super(RMSNorm, self).__init__()
         self.eps = eps
-        # 缩放和偏移
-        # scale和shift是可学习的参数让模型能够适应不同的数据分布
+        # 缩放
         # 缩放被初始化为1,由公式可知应该被初始化为1
         self.scale = nn.Parameter(torch.ones(hidden_size))
-        # 偏移被初始化为0,由公式可知应该被初始化为0
-        self.shift = nn.Parameter(torch.zeros(hidden_size))
+
+    def _norm(self, x):
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
 
     def forward(self, hidden_states: torch.Tensor):
-        # 计算均值
-        mean = hidden_states.mean(dim=-1, keepdim=True)
-        # 计算方差
-        variance = hidden_states.var(dim=-1, keepdim=True, unbiased=False)
-        # 套入层归一化公式
-        hidden_states_normalized = (hidden_states - mean) / torch.sqrt(variance + self.eps)
-        # 返回结果
-        return hidden_states_normalized * self.scale + self.shift
+        return self.scale + self._norm(hidden_states.float()).type_as(hidden_states)
 
 
 class FeedForward(nn.Module):
@@ -204,8 +194,8 @@ class ArsenalDecoderLayer(nn.Module):
         # 前馈神经网络处理
         self.feed_forward = FeedForward(config)
         # 归一化层
-        self.input_layer_norm = ArsenalLayerNorm(self.hidden_size, config.norm_eps)
-        self.post_attention_layer_norm = ArsenalLayerNorm(self.hidden_size, config.norm_eps)
+        self.input_layer_norm = RMSNorm(self.hidden_size, config.norm_eps)
+        self.post_attention_layer_norm = RMSNorm(self.hidden_size, config.norm_eps)
 
     def forward(self, hidden_states: torch.Tensor, position_embeddings):
         # 定义残差
@@ -245,7 +235,7 @@ class ArsenalModel(nn.Module):
                 ArsenalDecoderLayer(config, layer_idx) for layer_idx in range(self.num_layers)
             ]
         )
-        self.norm = ArsenalLayerNorm(config.hidden_size, config.norm_eps)
+        self.norm = RMSNorm(config.hidden_size, config.norm_eps)
         self.output_head = nn.Linear(config.hidden_size, config.vocab_size)
         freq_cos, freq_sin = compute_rope_freq(config, torch.arange(config.max_position_embedding).unsqueeze(0))
         self.register_buffer("freq_cos", freq_cos, persistent=False)
@@ -335,6 +325,6 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("我在北京，我想知道明天会不会下雨。"), temperature=0.0,
-                      top_k=100)
+    answer = generate(model, text_to_token_ids("人工智能技术目前已经被广泛运用"), temperature=0.0,
+                      top_k=512)
     print(token_ids_to_text(answer))
