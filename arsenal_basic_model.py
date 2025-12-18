@@ -254,13 +254,13 @@ class ArsenalModel(nn.Module):
     def forward(self, input_ids: Optional[torch.Tensor] = None):
         if input_ids is None:
             raise ValueError("input_ids不能为空")
-        batch_size, seq_len = input_ids.shape
+        _, seq_len = input_ids.shape
         # 词嵌入
         hidden_states = self.embed_tokens(input_ids)
         # 采用旋转位置编码取代-
         position_embeddings = (
-            self.freq_cos[:, :seq_len],
-            self.freq_sin[:, :seq_len]
+            self.freq_cos[:, hidden_states.shape[1]],
+            self.freq_sin[:, hidden_states.shape[1]]
         )
         # 循环层处理
         for decoder_layer in self.layers[:self.num_layers]:
@@ -335,6 +335,6 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("我最近迷上了披萨，有什么好吃的披萨你可以推荐吗？"), temperature=0.0,
-                      top_k=5)
+    answer = generate(model, text_to_token_ids("我在北京，我想知道明天会不会下雨。"), temperature=0.0,
+                      top_k=100)
     print(token_ids_to_text(answer))

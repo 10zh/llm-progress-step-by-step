@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -29,9 +30,9 @@ class ArsenalDataset(Dataset):
                                   padding='max_length')
         token_ids = encoding.input_ids.squeeze()
         # 获取训练集
-        input_ids = token_ids[:-1]
+        input_ids = torch.tensor(token_ids[:-1])
         # 获取验证结果
-        target_ids = token_ids[1:]
+        target_ids = torch.tensor(token_ids[1:])
         return input_ids, target_ids
 
 
