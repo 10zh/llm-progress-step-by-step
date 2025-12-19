@@ -268,7 +268,7 @@ def generate(model: ArsenalModel, idx, temperature=0.0, top_k=None):
     """
     for _ in range(model.context_length):
         # 每个维度只取最后context_size元素 (bsz,seq_len)
-        idx_cond = idx[:, -model.context_length:]
+        idx_cond = idx[:, -model.context_length + 1:]
         # 获取结果
         with torch.no_grad():
             logits: torch.Tensor = model(idx_cond)
@@ -294,7 +294,7 @@ def generate(model: ArsenalModel, idx, temperature=0.0, top_k=None):
         if idx_next == model.eos_token_id:
             break
         # 拼接idx (batch_size, seq_len)->(batch_size, seq_len+1)
-        idx = torch.cat((idx, idx_next), dim=1)  #
+        idx = torch.cat((idx, idx_next), dim=1)
     return idx
 
 
@@ -302,6 +302,7 @@ def text_to_token_ids(text):
     """
     将文本编码为向量
     """
+    text = "<|im_start|>" + text
     encoded = tokenizer.encode(text)
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # add batch dimension
     return encoded_tensor
@@ -326,7 +327,7 @@ if __name__ == '__main__':
     model.load_state_dict(
         torch.load("E:\\ai-env\\model\\small\\arsenal_model.pth", map_location=device, weights_only=True))
     model.eval()
-    answer = generate(model, text_to_token_ids("请帮我回答「地球上面最高的山峰是什么？」"),
-                      temperature=0.0,
-                      top_k=None)
+    answer = generate(model, text_to_token_ids("世界上最高的山峰是？"),
+                      temperature=1,
+                      top_k=10)
     print(token_ids_to_text(answer))
